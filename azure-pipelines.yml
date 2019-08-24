@@ -1,0 +1,101 @@
+
+
+name: '$(date:yyyyMMdd)$(rev:-rr)'
+
+trigger:
+  batch: true
+  branches:
+    include:
+    - master
+    - dev
+    - releases/*
+
+pr:
+  branches:
+    include:
+    - master
+    - dev
+    - releases/*
+
+variables:
+  functionName: "DotNetDevOps.BlobSemVerReactor.FunctionHost"
+  azure: 'Microsoft Partner Network(0fd7128b-5305-49da-a400-b7a37feb271c)'
+
+stages:
+- stage: build_ci_functions
+  displayName: "Building Functions for CI"
+  dependsOn: []
+  jobs:
+  - job: Build
+    pool:
+      vmImage: 'windows-2019'
+
+    variables:
+      buildConfiguration: 'Release'
+
+
+    steps:
+    # .NET Core
+    # Restore NuGet packages.
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'restore'
+        projects: '**/*.csproj'
+        feedsToUse: config
+        nugetConfigPath: nuget.config # you should always have a NuGet.config file!
+        #verbosityRestore: 'detailed' # Options: quiet, minimal, normal, detailed, diagnostic
+    - task: DotNetCoreCLI@2
+      displayName: Build
+      inputs:
+        command: build
+        projects: '**/*.csproj'
+        configuration: '$(buildConfiguration)'
+    - task: DotNetCoreCLI@2
+      displayName: Publish
+      inputs:
+        command: publish
+        publishWebProjects: false
+        projects: 'functions/**/*.csproj'
+        configuration: '$(buildConfiguration)'
+        arguments: '--output $(Build.ArtifactStagingDirectory)'
+    - task: PublishPipelineArtifact@0
+      inputs:
+        artifactName: 'drop'
+        targetPath: '$(Build.ArtifactStagingDirectory)'
+
+
+- stage: 'distribute_ci_functions'
+  displayName: "Distributing functions to CI store"
+  dependsOn: 'build_ci_functions'
+  jobs:
+  - job: build
+
+    pool:
+      vmImage: 'windows-2019'
+
+    steps:
+    - task: DownloadPipelineArtifact@1
+      inputs:
+        buildType: 'current'
+        artifactName: 'drop'
+        targetPath: '$(System.ArtifactsDirectory)'
+
+    - task: VersionReaderTask@1
+      inputs:
+        searchPattern: 'functions/$(functionName)/*.csproj'
+
+    - task: VSTSBuildInfoTask@1
+      displayName: 'Creating Build Artifact'
+      inputs:
+        OutPutFileName: '$(System.ArtifactsDirectory)/buildinfo.json'
+        FeatureRegexPattern: '[^/]+(?=/$|$)'
+        FeatureVariableName: ciname
+
+    - task: AzureFileCopy@3
+      inputs:
+        SourcePath: '$(Build.ArtifactStagingDirectory)/$(functionName).zip'
+        azureSubscription: $(azure)
+        Destination: 'AzureBlob'
+        storage: 'dotnetdevops'
+        ContainerName: 'functions'
+        BlobPrefix: '$(functionName)/$(version)-$(ciname)-$(Build.BuildNumber)/'
