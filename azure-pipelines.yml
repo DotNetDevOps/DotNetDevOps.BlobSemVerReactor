@@ -19,7 +19,7 @@ pr:
 
 variables:
   functionName: "DotNetDevOps.BlobSemVerReactor.FunctionHost"
-  azure: 'Microsoft Partner Network(0fd7128b-5305-49da-a400-b7a37feb271c)'
+  azure: 'Microsoft Partner Network (0fd7128b-5305-49da-a400-b7a37feb271c)'
 
 stages:
 - stage: build_ci_functions
