@@ -35,6 +35,10 @@ stages:
 
 
     steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        useGlobalJson: true
     # .NET Core
     # Restore NuGet packages.
     - task: DotNetCoreCLI@2
