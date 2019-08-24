@@ -80,7 +80,7 @@ namespace DotNetDevOps.BlobSemVerReactor.FunctionHost
 
 
         [FunctionName("Function1")]
-        public async Task Run([QueueTrigger("%queuename%", Connection = "")]string myQueueItem, ILogger log)
+        public async Task Run([QueueTrigger("%queuename%")]string myQueueItem, ILogger log)
         {
             //Take the example json above and apply the updated version to appsetting WEBSITE_RUN_FROM_ZIP
             var json = JToken.Parse(myQueueItem);
